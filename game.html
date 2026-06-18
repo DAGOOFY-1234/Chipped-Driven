@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chipped-Driven: Open World Prototype</title>
+  <style>
+    :root {
+      --bg: #efe1bf;
+      --ink: #2a2016;
+      --panel: #fff5de;
+      --accent: #924115;
+      --ok: #1f6b3d;
+      --warn: #7f1d1d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top, #fbf3e1 0%, var(--bg) 60%, #dcc597 100%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .card {
+      width: min(1080px, 100%);
+      background: var(--panel);
+      border: 2px solid #b49a6a;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(36, 22, 10, 0.15);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+    }
+
+    p {
+      margin: 0 0 14px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      margin: 0 0 12px;
+      font-weight: 700;
+      color: #4d3c25;
+      font-size: 0.95rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .viewport {
+      position: relative;
+      height: 500px;
+      border: 2px solid #b49a6a;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #d9c18f;
+    }
+
+    .world {
+      position: absolute;
+      width: 2400px;
+      height: 1400px;
+      background:
+        linear-gradient(90deg,
+          #5f8f55 0%, #6ba05c 33.33%,
+          #7f4a2c 33.34%, #9f5f34 66.66%,
+          #9bb8c5 66.67%, #c8dbe5 100%
+        );
+      transform-origin: 0 0;
+    }
+
+    .biome-label {
+      position: absolute;
+      top: 14px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.25);
+      background: rgba(255, 255, 255, 0.5);
+      font-weight: 700;
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+
+    .label-jungle { left: 120px; }
+    .label-volcanic { left: 980px; }
+    .label-glacial { left: 1780px; }
+
+    .haven {
+      position: absolute;
+      width: 90px;
+      height: 70px;
+      border: 2px solid #3a2510;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #cf9a55 0%, #9f5e2f 100%);
+      color: #1e1208;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      text-align: center;
+      font-size: 0.75rem;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .node {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 0, 0, 0.5);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .node-flint { background: #d8d9db; }
+    .node-vines { background: #4f7f3f; }
+    .node-sap { background: #f0aa31; }
+    .node-obsidian { background: #2f2634; }
+    .node-sulfur { background: #ded04e; }
+    .node-redwood { background: #8b4f2d; }
+    .node-tusk { background: #f5efe2; }
+    .node-fur { background: #9ba9b8; }
+
+    .player {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #2a2016;
+      background: radial-gradient(circle at 30% 30%, #fff6e2 0 20%, #6e4320 21% 100%);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .prompt {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.35);
+      background: rgba(255, 253, 246, 0.82);
+      font-weight: 700;
+      font-size: 0.85rem;
+      max-width: calc(100% - 24px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .box {
+      background: #fffdf7;
+      border: 1px solid #ceb98f;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      line-height: 1.5;
+    }
+
+    .status {
+      margin-top: 8px;
+      font-weight: 700;
+      color: var(--ok);
+      min-height: 1.2em;
+    }
+
+    .danger { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Chipped-Driven Open World</h1>
+    <p>
+      Explore one continuous world, scavenge all three biomes, and return to the Mobile Steam Haven to craft upgrades.
+    </p>
+
+    <p class="controls">Move with WASD or arrow keys. Press E or Space near a node to gather, or near the haven to craft.</p>
+
+    <section class="layout">
+      <section class="viewport" id="viewport" aria-label="Open world game map">
+        <div class="world" id="world">
+          <div class="biome-label label-jungle">Jungle</div>
+          <div class="biome-label label-volcanic">Volcanic</div>
+          <div class="biome-label label-glacial">Glacial</div>
+          <div class="haven" id="haven">Steam Haven</div>
+          <div class="player" id="player" aria-hidden="true"></div>
+        </div>
+        <div class="prompt" id="prompt">Find a nearby node and press E.</div>
+      </section>
+
+      <section class="grid">
+        <section class="box">
+          <strong>Location</strong>
+          <p>Biome: <span id="biome">Jungle</span></p>
+          <p>Position: <span id="position">0, 0</span></p>
+          <p>Steam Power: <span id="power">0</span></p>
+        </section>
+
+        <section class="box">
+          <strong>Resources</strong>
+          <ul class="list">
+            <li>Flint: <span id="flint">0</span></li>
+            <li>Vines: <span id="vines">0</span></li>
+            <li>Sap: <span id="sap">0</span></li>
+            <li>Obsidian: <span id="obsidian">0</span></li>
+            <li>Sulfur: <span id="sulfur">0</span></li>
+            <li>Redwood: <span id="redwood">0</span></li>
+            <li>Mammoth Tusk: <span id="tusk">0</span></li>
+            <li>Scurry-Fur: <span id="fur">0</span></li>
+          </ul>
+        </section>
+
+        <section class="box" style="grid-column: 1 / -1;">
+          <strong>Current Project</strong>
+          <p id="project">Steam Valves: 3 Flint, 2 Vines, 2 Sap. Reward +2 power.</p>
+          <p>Craft by standing near the Steam Haven and pressing E.</p>
+          <p class="status" id="status">Explore the world and harvest your first materials.</p>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const WORLD_WIDTH = 2400;
+    const WORLD_HEIGHT = 1400;
+    const keys = new Set();
+
+    const biomeBands = [
+      { name: "Jungle", xMin: 0, xMax: 799 },
+      { name: "Volcanic", xMin: 800, xMax: 1599 },
+      { name: "Glacial", xMin: 1600, xMax: WORLD_WIDTH }
+    ];
+
+    const resourceByBiome = {
+      Jungle: ["flint", "vines", "sap"],
+      Volcanic: ["obsidian", "sulfur", "redwood"],
+      Glacial: ["tusk", "fur"]
+    };
+
+    const resourceLabels = {
+      flint: "Flint Shards",
+      vines: "Jungle Vines",
+      sap: "Prehistoric Sap",
+      obsidian: "Obsidian Shards",
+      sulfur: "Volcanic Sulfur",
+      redwood: "Hollowed Redwood",
+      tusk: "Mammoth Tusk",
+      fur: "Scurry-Fur"
+    };
+
+    const projects = [
+      {
+        name: "Steam Valves",
+        cost: { flint: 3, vines: 2, sap: 2 },
+        rewardPower: 2
+      },
+      {
+        name: "Volcanic Turbine",
+        cost: { obsidian: 3, sulfur: 2, redwood: 2 },
+        rewardPower: 4
+      },
+      {
+        name: "Apex Thermal Core",
+        cost: { tusk: 2, fur: 3, obsidian: 1 },
+        rewardPower: 6
+      }
+    ];
+
+    const state = {
+      player: { x: 220, y: 700, speed: 4.1 },
+      camera: { x: 0, y: 0 },
+      haven: { x: 170, y: 700, radius: 76 },
+      nodes: [],
+      nextNodeId: 1,
+      resources: {
+        flint: 0,
+        vines: 0,
+        sap: 0,
+        obsidian: 0,
+        sulfur: 0,
+        redwood: 0,
+        tusk: 0,
+        fur: 0
+      },
+      power: 0,
+      projectIndex: 0,
+      nearby: null,
+      won: false
+    };
+
+    const el = {
+      viewport: document.getElementById("viewport"),
+      world: document.getElementById("world"),
+      haven: document.getElementById("haven"),
+      player: document.getElementById("player"),
+      prompt: document.getElementById("prompt"),
+      status: document.getElementById("status"),
+      project: document.getElementById("project"),
+      biome: document.getElementById("biome"),
+      position: document.getElementById("position"),
+      power: document.getElementById("power"),
+      flint: document.getElementById("flint"),
+      vines: document.getElementById("vines"),
+      sap: document.getElementById("sap"),
+      obsidian: document.getElementById("obsidian"),
+      sulfur: document.getElementById("sulfur"),
+      redwood: document.getElementById("redwood"),
+      tusk: document.getElementById("tusk"),
+      fur: document.getElementById("fur")
+    };
+
+    function distance(aX, aY, bX, bY) {
+      const dx = aX - bX;
+      const dy = aY - bY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function biomeForX(x) {
+      for (const biome of biomeBands) {
+        if (x >= biome.xMin && x <= biome.xMax) {
+          return biome.name;
+        }
+      }
+      return "Unknown";
+    }
+
+    function nodeColorClass(type) {
+      return "node node-" + type;
+    }
+
+    function setStatus(message, danger = false) {
+      el.status.textContent = message;
+      el.status.className = danger ? "status danger" : "status";
+    }
+
+    function formatProject(project) {
+      const costText = Object.entries(project.cost)
+        .map(([type, amount]) => amount + " " + resourceLabels[type])
+        .join(", ");
+      return project.name + ": " + costText + ". Reward +" + project.rewardPower + " power.";
+    }
+
+    function spawnNodeInBiome(biomeName) {
+      const band = biomeBands.find((b) => b.name === biomeName);
+      const types = resourceByBiome[biomeName];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const node = {
+        id: state.nextNodeId++,
+        biome: biomeName,
+        type,
+        x: Math.random() * (band.xMax - band.xMin - 120) + band.xMin + 60,
+        y: Math.random() * (WORLD_HEIGHT - 140) + 70
+      };
+      node.element = document.createElement("div");
+      node.element.className = nodeColorClass(type);
+      node.element.style.left = node.x + "px";
+      node.element.style.top = node.y + "px";
+      state.nodes.push(node);
+      el.world.appendChild(node.element);
+    }
+
+    function spawnWorldNodes() {
+      for (let i = 0; i < 20; i += 1) spawnNodeInBiome("Jungle");
+      for (let i = 0; i < 20; i += 1) spawnNodeInBiome("Volcanic");
+      for (let i = 0; i < 14; i += 1) spawnNodeInBiome("Glacial");
+    }
+
+    function removeNode(node) {
+      node.element.remove();
+      state.nodes = state.nodes.filter((n) => n.id !== node.id);
+      spawnNodeInBiome(node.biome);
+    }
+
+    function nearbyInteraction() {
+      const nearHaven = distance(state.player.x, state.player.y, state.haven.x, state.haven.y) <= state.haven.radius;
+      if (nearHaven) {
+        return { kind: "haven" };
+      }
+
+      let bestNode = null;
+      let bestDist = Infinity;
+      for (const node of state.nodes) {
+        const d = distance(state.player.x, state.player.y, node.x, node.y);
+        if (d < bestDist) {
+          bestDist = d;
+          bestNode = node;
+        }
+      }
+
+      if (bestNode && bestDist <= 46) {
+        return { kind: "node", node: bestNode };
+      }
+
+      return null;
+    }
+
+    function canAfford(project) {
+      return Object.entries(project.cost).every(([type, amount]) => state.resources[type] >= amount);
+    }
+
+    function spendResources(cost) {
+      for (const [type, amount] of Object.entries(cost)) {
+        state.resources[type] -= amount;
+      }
+    }
+
+    function interact() {
+      if (state.won) {
+        setStatus("You already secured Safe Haven. Refresh to start over.");
+        return;
+      }
+
+      const nearby = nearbyInteraction();
+      if (!nearby) {
+        setStatus("Nothing to interact with here. Move closer to a node or haven.", true);
+        return;
+      }
+
+      if (nearby.kind === "node") {
+        const type = nearby.node.type;
+        state.resources[type] += 1;
+        setStatus("Collected " + resourceLabels[type] + ".");
+        removeNode(nearby.node);
+      }
+
+      if (nearby.kind === "haven") {
+        const project = projects[state.projectIndex];
+        if (!project) {
+          setStatus("The haven is complete. Civilization can begin.");
+          return;
+        }
+
+        if (!canAfford(project)) {
+          setStatus("Missing materials for " + project.name + ".", true);
+          return;
+        }
+
+        spendResources(project.cost);
+        state.power += project.rewardPower;
+        state.projectIndex += 1;
+
+        if (state.projectIndex >= projects.length) {
+          state.won = true;
+          setStatus("Victory! Your open-world expedition built a fully powered Safe Haven.");
+        } else {
+          setStatus(project.name + " crafted. Steam power increased.");
+        }
+      }
+
+      drawHud();
+    }
+
+    function updateMovement() {
+      const speed = state.player.speed;
+      if (keys.has("arrowup") || keys.has("w")) state.player.y -= speed;
+      if (keys.has("arrowdown") || keys.has("s")) state.player.y += speed;
+      if (keys.has("arrowleft") || keys.has("a")) state.player.x -= speed;
+      if (keys.has("arrowright") || keys.has("d")) state.player.x += speed;
+
+      state.player.x = clamp(state.player.x, 18, WORLD_WIDTH - 18);
+      state.player.y = clamp(state.player.y, 18, WORLD_HEIGHT - 18);
+    }
+
+    function updateCamera() {
+      const viewW = el.viewport.clientWidth;
+      const viewH = el.viewport.clientHeight;
+      state.camera.x = clamp(state.player.x - viewW / 2, 0, WORLD_WIDTH - viewW);
+      state.camera.y = clamp(state.player.y - viewH / 2, 0, WORLD_HEIGHT - viewH);
+    }
+
+    function drawWorld() {
+      el.haven.style.left = state.haven.x + "px";
+      el.haven.style.top = state.haven.y + "px";
+      el.player.style.left = state.player.x + "px";
+      el.player.style.top = state.player.y + "px";
+      el.world.style.transform = "translate(" + (-state.camera.x) + "px, " + (-state.camera.y) + "px)";
+    }
+
+    function drawHud() {
+      const biome = biomeForX(state.player.x);
+      el.biome.textContent = biome;
+      el.position.textContent = Math.round(state.player.x) + ", " + Math.round(state.player.y);
+      el.power.textContent = String(state.power);
+
+      el.flint.textContent = String(state.resources.flint);
+      el.vines.textContent = String(state.resources.vines);
+      el.sap.textContent = String(state.resources.sap);
+      el.obsidian.textContent = String(state.resources.obsidian);
+      el.sulfur.textContent = String(state.resources.sulfur);
+      el.redwood.textContent = String(state.resources.redwood);
+      el.tusk.textContent = String(state.resources.tusk);
+      el.fur.textContent = String(state.resources.fur);
+
+      if (state.won) {
+        el.project.textContent = "All projects complete. You built the Safe Haven.";
+      } else {
+        el.project.textContent = formatProject(projects[state.projectIndex]);
+      }
+
+      state.nearby = nearbyInteraction();
+      if (state.nearby?.kind === "node") {
+        el.prompt.textContent = "Press E to gather " + resourceLabels[state.nearby.node.type] + ".";
+      } else if (state.nearby?.kind === "haven") {
+        el.prompt.textContent = "Press E to craft at the Steam Haven.";
+      } else {
+        el.prompt.textContent = "Explore and move closer to resources or the haven.";
+      }
+    }
+
+    function frame() {
+      updateMovement();
+      updateCamera();
+      drawWorld();
+      drawHud();
+      requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("keydown", (event) => {
+      const key = event.key.toLowerCase();
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", "e", " "].includes(key)) {
+        event.preventDefault();
+      }
+
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
+        keys.add(key);
+      }
+
+      if (key === "e" || key === " ") {
+        interact();
+      }
+    });
+
+    window.addEventListener("keyup", (event) => {
+      keys.delete(event.key.toLowerCase());
+    });
+
+    window.addEventListener("resize", () => {
+      updateCamera();
+      drawWorld();
+    });
+
+    spawnWorldNodes();
+    setStatus("Explore each biome, collect resources, and craft at the haven.");
+    updateCamera();
+    drawWorld();
+    drawHud();
+    frame();
+  </script>
+</body>
+</html>
