@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chipped & Driven - Open Jungle</title>
+  <style>
+    :root {
+      --bg: #11231a;
+      --panel: #1c3a2a;
+      --ink: #ecf7e9;
+      --accent: #f3ba4f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Verdana", sans-serif;
+      background: radial-gradient(circle at 20% 10%, #1f4a33 0%, var(--bg) 55%);
+      color: var(--ink);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .wrap {
+      width: min(980px, 100%);
+      display: grid;
+      gap: 12px;
+    }
+
+    .hud {
+      background: linear-gradient(180deg, #234734, var(--panel));
+      border: 2px solid #355f47;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hud strong { color: var(--accent); }
+
+    canvas {
+      width: 100%;
+      border: 3px solid #3d674e;
+      border-radius: 12px;
+      background: linear-gradient(#2c5f45 0%, #254f3b 60%, #1f4332 100%);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .help {
+      font-size: 0.95rem;
+      opacity: 0.95;
+    }
+
+    .kbd {
+      background: #0f2018;
+      border: 1px solid #456a55;
+      border-bottom-width: 3px;
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-weight: bold;
+      color: #dff3dd;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hud">
+      <div><strong>Chipped & Driven:</strong> Open Jungle</div>
+      <div>Score: <span id="score">0</span></div>
+      <div>Resources Found: <span id="found">0</span></div>
+      <div>Position: <span id="pos">0, 0</span></div>
+    </section>
+
+    <canvas id="game" width="980" height="560" aria-label="open map game area"></canvas>
+
+    <section class="hud help">
+      Spawn solo and explore a full map. Move with <span class="kbd">Arrow Keys</span> or <span class="kbd">W A S D</span>.
+      Hold <span class="kbd">Shift</span> to sprint. Press <span class="kbd">R</span> to reset the world.
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const scoreEl = document.getElementById("score");
+    const foundEl = document.getElementById("found");
+    const posEl = document.getElementById("pos");
+
+    const keys = {};
+    const rnd = (min, max) => Math.random() * (max - min) + min;
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    // ── Tile system ──────────────────────────────────────────────
+    const TILE_SIZE = 128;
+    let tile1 = null; // clumpy jungle (Image 1)
+    let tile2 = null; // plain grass   (Image 2)
+
+    function hashPx(x, y) {
+      let h = (Math.imul(x, 1664525) + Math.imul(y, 22695477) + 1013904223) | 0;
+      h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+      h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+      return (h ^ (h >>> 16)) >>> 0;
+    }
+
+    function buildTile(type) {
+      const c = document.createElement('canvas');
+      c.width = c.height = TILE_SIZE;
+      const g = c.getContext('2d');
+      const S = TILE_SIZE;
+      const id = g.createImageData(S, S);
+      const d = id.data;
+
+      if (type === 'clumpy') {
+        // ── Image 1: bright lime-green jungle with dark grass clumps ──
+        const pal = [
+          [90,188,40],[94,194,44],[98,200,48],[86,180,36],
+          [104,202,46],[88,186,38],[100,196,46],[92,192,42]
+        ];
+        for (let y = 0; y < S; y++) {
+          for (let x = 0; x < S; x++) {
+            const i = (y * S + x) * 4;
+            const h = hashPx(x, y) % pal.length;
+            d[i]=pal[h][0]; d[i+1]=pal[h][1]; d[i+2]=pal[h][2]; d[i+3]=255;
+          }
+        }
+        g.putImageData(id, 0, 0);
+
+        // Dark grass clumps (6 tufts, matching image layout)
+        const clumps = [
+          [0.18,0.22],[0.82,0.18],[0.15,0.78],[0.84,0.80],[0.50,0.36],[0.48,0.70]
+        ];
+        for (const [rx, ry] of clumps) {
+          const cx = Math.floor(rx * S);
+          const cy = Math.floor(ry * S);
+          // shadow base
+          g.fillStyle = '#0b2f09';
+          g.fillRect(cx - 12, cy - 1, 24, 5);
+          // blades: varying height and dark-green shades
+          const bDefs = [
+            {o:-12,h:9, c:'#15380f'},{o:-8, h:12,c:'#194a13'},
+            {o:-4, h:15,c:'#1c5215'},{o:0,  h:17,c:'#1f5918'},
+            {o:4,  h:15,c:'#1c5215'},{o:8,  h:12,c:'#194a13'},
+            {o:12, h:9, c:'#15380f'}
+          ];
+          for (const b of bDefs) {
+            g.fillStyle = b.c;
+            g.fillRect(cx + b.o - 1, cy - b.h, 3, b.h);
+            g.fillStyle = '#287020';
+            g.fillRect(cx + b.o, cy - b.h, 1, 3);
+          }
+        }
+
+      } else {
+        // ── Image 2: medium-green plain grass with vertical streaks ──
+        const pal = [
+          [42,136,48],[44,140,50],[46,144,52],[40,130,44],
+          [48,148,54],[38,126,42],[50,152,56],[44,138,50]
+        ];
+        for (let y = 0; y < S; y++) {
+          for (let x = 0; x < S; x++) {
+            const i = (y * S + x) * 4;
+            // streak: hash varies with column and slowly with row
+            const h = hashPx(x, Math.floor(y / 4)) % pal.length;
+            d[i]=pal[h][0]; d[i+1]=pal[h][1]; d[i+2]=pal[h][2]; d[i+3]=255;
+          }
+        }
+        g.putImageData(id, 0, 0);
+      }
+
+      // Both tiles share a radial edge-darkening vignette
+      const gr = g.createRadialGradient(S/2,S/2, S*0.28, S/2,S/2, S*0.75);
+      gr.addColorStop(0, 'rgba(0,0,0,0)');
+      gr.addColorStop(1, 'rgba(0,0,0,0.27)');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, S, S);
+      return c;
+    }
+
+    function initTiles() {
+      tile1 = buildTile('clumpy');
+      tile2 = buildTile('plain');
+    }
+    // ─────────────────────────────────────────────────────────────
+
+    const WORLD_W = 2800;
+    const WORLD_H = 1800;
+
+    const state = {
+      score: 0,
+      found: 0,
+      lastTs: 0,
+      player: {
+        x: WORLD_W / 2,
+        y: WORLD_H / 2,
+        w: 30,
+        h: 30,
+        speed: 230
+      },
+      camera: { x: 0, y: 0 },
+      resources: []
+    };
+
+    const resourceTypes = [
+      { name: "Flint", value: 8, color: "#f4d07f" },
+      { name: "Vine", value: 10, color: "#8de389" },
+      { name: "Sap", value: 12, color: "#f2a34f" }
+    ];
+
+    function spawnResource(existing = null) {
+      const type = resourceTypes[(Math.random() * resourceTypes.length) | 0];
+      const resource = existing || {};
+      resource.name = type.name;
+      resource.value = type.value;
+      resource.color = type.color;
+      resource.x = rnd(40, WORLD_W - 40);
+      resource.y = rnd(40, WORLD_H - 40);
+      resource.r = rnd(7, 11);
+      return resource;
+    }
+
+    function buildWorld() {
+      state.resources.length = 0;
+      for (let i = 0; i < 180; i++) {
+        state.resources.push(spawnResource());
+      }
+    }
+
+    function resetGame() {
+      state.score = 0;
+      state.found = 0;
+      state.player.x = WORLD_W / 2;
+      state.player.y = WORLD_H / 2;
+      buildWorld();
+      updateHud();
+    }
+
+    function updateHud() {
+      scoreEl.textContent = String(state.score);
+      foundEl.textContent = String(state.found);
+      posEl.textContent = `${Math.round(state.player.x)}, ${Math.round(state.player.y)}`;
+    }
+
+    function rectCircleHit(rx, ry, rw, rh, cx, cy, cr) {
+      const testX = clamp(cx, rx, rx + rw);
+      const testY = clamp(cy, ry, ry + rh);
+      const dx = cx - testX;
+      const dy = cy - testY;
+      return (dx * dx + dy * dy) <= cr * cr;
+    }
+
+    function update(dt) {
+      const p = state.player;
+      let dx = 0;
+      let dy = 0;
+
+      if (keys.ArrowLeft || keys.a || keys.A) dx -= 1;
+      if (keys.ArrowRight || keys.d || keys.D) dx += 1;
+      if (keys.ArrowUp || keys.w || keys.W) dy -= 1;
+      if (keys.ArrowDown || keys.s || keys.S) dy += 1;
+
+      const mag = Math.hypot(dx, dy) || 1;
+      const sprint = (keys.Shift || keys.shift) ? 1.65 : 1;
+      const step = p.speed * sprint * dt;
+
+      p.x += (dx / mag) * step;
+      p.y += (dy / mag) * step;
+
+      p.x = clamp(p.x, 0, WORLD_W - p.w);
+      p.y = clamp(p.y, 0, WORLD_H - p.h);
+
+      for (let i = 0; i < state.resources.length; i++) {
+        const r = state.resources[i];
+        if (rectCircleHit(p.x, p.y, p.w, p.h, r.x, r.y, r.r + 4)) {
+          state.score += r.value;
+          state.found += 1;
+          spawnResource(r);
+        }
+      }
+
+      state.camera.x = clamp(p.x + p.w / 2 - canvas.width / 2, 0, WORLD_W - canvas.width);
+      state.camera.y = clamp(p.y + p.h / 2 - canvas.height / 2, 0, WORLD_H - canvas.height);
+
+      updateHud();
+    }
+
+    function drawMapBackground() {
+      if (!tile1 || !tile2) return;
+      const camX = state.camera.x;
+      const camY = state.camera.y;
+      const startTX = Math.floor(camX / TILE_SIZE);
+      const startTY = Math.floor(camY / TILE_SIZE);
+      const endTX = Math.ceil((camX + canvas.width)  / TILE_SIZE);
+      const endTY = Math.ceil((camY + canvas.height) / TILE_SIZE);
+      for (let ty = startTY; ty <= endTY; ty++) {
+        for (let tx = startTX; tx <= endTX; tx++) {
+          const worldX = tx * TILE_SIZE;
+          const worldY = ty * TILE_SIZE;
+          if (worldX >= WORLD_W || worldY >= WORLD_H) continue;
+          // 2/3 clumpy jungle, 1/3 plain grass — patch-based so nearby tiles match
+          const blockX = tx >> 2;
+          const blockY = ty >> 2;
+          const tileImg = (hashPx(blockX + 9999, blockY + 9999) % 3) === 0 ? tile2 : tile1;
+          ctx.drawImage(tileImg, worldX - camX, worldY - camY);
+        }
+      }
+    }
+
+    function drawWorldBounds() {
+      const camX = state.camera.x;
+      const camY = state.camera.y;
+      ctx.strokeStyle = "rgba(246, 234, 180, 0.35)";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(-camX, -camY, WORLD_W, WORLD_H);
+    }
+
+    function drawResources() {
+      const camX = state.camera.x;
+      const camY = state.camera.y;
+
+      for (const r of state.resources) {
+        const sx = r.x - camX;
+        const sy = r.y - camY;
+        if (sx < -20 || sy < -20 || sx > canvas.width + 20 || sy > canvas.height + 20) continue;
+
+        ctx.beginPath();
+        ctx.fillStyle = r.color;
+        ctx.arc(sx, sy, r.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+        ctx.arc(sx - 2, sy - 2, r.r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawPlayer() {
+      const p = state.player;
+      const sx = p.x - state.camera.x;
+      const sy = p.y - state.camera.y;
+
+      ctx.fillStyle = "#e4e8d1";
+      ctx.fillRect(sx, sy, p.w, p.h);
+      ctx.fillStyle = "#5e4126";
+      ctx.fillRect(sx + 4, sy + 4, p.w - 8, p.h - 8);
+
+      ctx.strokeStyle = "rgba(255, 240, 180, 0.65)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx - 2, sy - 2, p.w + 4, p.h + 4);
+    }
+
+    function drawSoloSpawnBanner() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+      ctx.fillRect(12, 12, 310, 34);
+      ctx.fillStyle = "#f7f3d4";
+      ctx.font = "16px Trebuchet MS";
+      ctx.textAlign = "left";
+      ctx.fillText("You spawned alone. Explore the open jungle.", 20, 34);
+    }
+
+    function drawMinimap() {
+      const miniW = 170;
+      const miniH = 110;
+      const x = canvas.width - miniW - 16;
+      const y = 16;
+
+      ctx.fillStyle = "rgba(12, 23, 17, 0.66)";
+      ctx.fillRect(x, y, miniW, miniH);
+      ctx.strokeStyle = "rgba(219, 240, 210, 0.45)";
+      ctx.strokeRect(x, y, miniW, miniH);
+
+      const px = x + (state.player.x / WORLD_W) * miniW;
+      const py = y + (state.player.y / WORLD_H) * miniH;
+
+      ctx.fillStyle = "#f3ba4f";
+      ctx.fillRect(px - 3, py - 3, 6, 6);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawMapBackground();
+      drawWorldBounds();
+      drawResources();
+      drawPlayer();
+      drawSoloSpawnBanner();
+      drawMinimap();
+    }
+
+    function frame(ts) {
+      const dt = Math.min(0.05, (ts - state.lastTs) / 1000 || 0);
+      state.lastTs = ts;
+      update(dt);
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+      if (e.key.toLowerCase() === "r") resetGame();
+    });
+
+    window.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+
+    initTiles();
+    resetGame();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
