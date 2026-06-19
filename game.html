@@ -77,13 +77,16 @@
       width: 2400px;
       height: 1400px;
       background-image:
-        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px),
-        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 4px),
-        repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.03) 3px, rgba(0, 0, 0, 0.03) 6px);
-      background-size: 100% 100%, 100% 100%, 100% 100%;
+        repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255, 255, 255, 0.03) 1px, rgba(255, 255, 255, 0.03) 2px),
+        repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0, 0, 0, 0.08) 3px, rgba(0, 0, 0, 0.08) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 7px, rgba(0, 0, 0, 0.04) 7px, rgba(0, 0, 0, 0.04) 9px),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.06) 2px, rgba(0, 0, 0, 0.06) 3px),
+        repeating-linear-gradient(90deg, #6bb85d, #6bb85d 2px, #5fa855 2px, #5fa855 3px),
+        repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(0, 100, 0, 0.05) 5px, rgba(0, 100, 0, 0.05) 7px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
       background-color: #5fa855;
       background-attachment: fixed;
-      background-blend-mode: overlay, overlay, multiply;
+      background-blend-mode: normal, multiply, overlay, overlay, normal, overlay;
     }
 
     .world::before {
@@ -134,7 +137,6 @@
       font-size: 0.75rem;
       pointer-events: none;
       transform: translate(-50%, -50%);
-      z-index: 2;
     }
 
     .node {
@@ -166,7 +168,6 @@
       background: radial-gradient(circle at 30% 30%, #fff6e2 0 20%, #6e4320 21% 100%);
       transform: translate(-50%, -50%);
       pointer-events: none;
-      z-index: 3;
     }
 
     .prompt {
