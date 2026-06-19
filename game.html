@@ -76,22 +76,8 @@
       position: absolute;
       width: 2400px;
       height: 1400px;
-      background-image:
-        radial-gradient(circle at 15% 25%, #1a4d1a 0%, #2d5f2d 30%, transparent 50%),
-        radial-gradient(circle at 55% 60%, #1a4d1a 0%, #2d5f2d 30%, transparent 50%),
-        radial-gradient(circle at 80% 15%, #1a4d1a 0%, #2d5f2d 30%, transparent 50%),
-        radial-gradient(circle at 40% 80%, #1a4d1a 0%, #2d5f2d 30%, transparent 50%),
-        radial-gradient(circle at 25% 70%, #1a4d1a 0%, #2d5f2d 30%, transparent 50%),
-        radial-gradient(circle at 70% 45%, #1a4d1a 0%, #2d5f2d 30%, transparent 50%),
-        radial-gradient(ellipse 3px 8px at 20% 28%, #0d3d0d 0%, transparent 100%),
-        radial-gradient(ellipse 3px 8px at 25% 32%, #0d3d0d 0%, transparent 100%),
-        radial-gradient(ellipse 3px 8px at 18% 22%, #0d3d0d 0%, transparent 100%),
-        repeating-linear-gradient(90deg, transparent, transparent 12px, rgba(29, 61, 29, 0.3) 12px, rgba(29, 61, 29, 0.3) 14px),
-        repeating-linear-gradient(0deg, transparent, transparent 12px, rgba(29, 61, 29, 0.25) 12px, rgba(29, 61, 29, 0.25) 14px);
-      background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 14px 100%, 100% 14px;
-      background-color: #7ec870;
-      background-attachment: fixed;
-      background-blend-mode: normal, normal, normal, normal, normal, normal, darken, darken, darken, multiply, multiply;
+      background-color: #7dc96f;
+      image-rendering: pixelated;
     }
 
     .world::before {
@@ -99,16 +85,16 @@
       position: absolute;
       width: 100%;
       height: 100%;
-      background:
-        linear-gradient(90deg,
-          #5fa855 0%, #6eb85d 20%,
-          #7b6b3d 20%, #9d7a3d 40%,
-          #9db5c5 40%, #b8d4e8 60%,
-          #9db5c5 60%, #a8c2d5 80%,
-          #5fa855 80%, #6eb85d 100%
-        );
+      background: linear-gradient(90deg,
+        rgba(95, 168, 85, 0.1) 0%,
+        rgba(95, 168, 85, 0.1) 33.3%,
+        rgba(157, 122, 61, 0.55) 33.3%,
+        rgba(157, 122, 61, 0.55) 66.6%,
+        rgba(157, 181, 197, 0.65) 66.6%,
+        rgba(157, 181, 197, 0.65) 100%
+      );
       pointer-events: none;
-      z-index: 0;
+      z-index: 1;
     }
 
     .biome-label {
@@ -588,8 +574,57 @@
       drawWorld();
     });
 
+    function drawGrassTuft(ctx, bx, by) {
+      const colors = ['#1a5c1a', '#1f6b20', '#145018', '#1c6820', '#0f4a15'];
+      const angles = [-40, -25, -12, 0, 12, 26, 40];
+      for (const ang of angles) {
+        if (Math.random() < 0.8) {
+          const len = 6 + Math.floor(Math.random() * 6);
+          ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+          const rad = ang * Math.PI / 180;
+          for (let i = 1; i <= len; i++) {
+            const px = Math.round(bx + Math.sin(rad) * i);
+            const py = Math.round(by - Math.cos(rad) * i);
+            ctx.fillRect(px, py, i < len * 0.7 ? 2 : 1, 1);
+          }
+        }
+      }
+    }
+
+    function buildGrassTexture() {
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#7dc96f';
+      ctx.fillRect(0, 0, size, size);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const r = Math.random();
+          if (r < 0.07) {
+            ctx.fillStyle = 'rgba(0,55,0,0.3)';
+            ctx.fillRect(x, y, 1, 1);
+          } else if (r < 0.10) {
+            ctx.fillStyle = 'rgba(160,240,100,0.35)';
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+      const count = 10 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < count; i++) {
+        const tx = 12 + Math.floor(Math.random() * (size - 24));
+        const ty = 16 + Math.floor(Math.random() * (size - 28));
+        drawGrassTuft(ctx, tx, ty);
+      }
+      return canvas.toDataURL('image/png');
+    }
+
     spawnWorldNodes();
     setStatus("Explore each biome, collect resources, and craft at the haven.");
+    const grassTile = buildGrassTexture();
+    el.world.style.backgroundImage = 'url(' + grassTile + ')';
+    el.world.style.backgroundSize = '256px 256px';
     updateCamera();
     drawWorld();
     drawHud();
