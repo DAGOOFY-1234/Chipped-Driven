@@ -597,40 +597,42 @@
         ctx.fillRect(12, 40 + row * 6, 86, 1);
       }
 
-      // Roof left slope
+      // Roof left slope (full triangle)
       ctx.fillStyle = '#d9a060';
       ctx.beginPath();
-      ctx.moveTo(55, 3);
-      ctx.lineTo(2, 44);
-      ctx.lineTo(12, 44);
-      ctx.lineTo(55, 9);
+      ctx.moveTo(55, 3);   // peak
+      ctx.lineTo(2, 44);   // bottom-left overhang
+      ctx.lineTo(55, 44);  // bottom-center
       ctx.closePath();
       ctx.fill();
 
-      // Roof right slope (darker)
+      // Roof right slope (full triangle, darker)
       ctx.fillStyle = '#b87c40';
       ctx.beginPath();
-      ctx.moveTo(55, 3);
-      ctx.lineTo(108, 44);
-      ctx.lineTo(98, 44);
-      ctx.lineTo(55, 9);
+      ctx.moveTo(55, 3);    // peak
+      ctx.lineTo(108, 44);  // bottom-right overhang
+      ctx.lineTo(55, 44);   // bottom-center
       ctx.closePath();
       ctx.fill();
 
-      // Roof plank lines
-      ctx.strokeStyle = 'rgba(80,40,10,0.2)';
+      // Horizontal plank lines (parallel to eave)
+      ctx.strokeStyle = 'rgba(80,40,10,0.22)';
       ctx.lineWidth = 1;
-      for (let i = 1; i <= 7; i++) {
-        const t = i / 8;
-        ctx.beginPath(); ctx.moveTo(2 + 53 * t, 44 - 41 * t); ctx.lineTo(12 + 43 * t, 44 - 35 * t); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(108 - 53 * t, 44 - 41 * t); ctx.lineTo(98 - 43 * t, 44 - 35 * t); ctx.stroke();
+      for (let i = 1; i <= 9; i++) {
+        const t = i / 10;
+        const y = 3 + (44 - 3) * t;
+        const xL = 2 + (55 - 2) * t;
+        const xR = 108 - (108 - 55) * t;
+        ctx.beginPath(); ctx.moveTo(xL, y); ctx.lineTo(55, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(55, y); ctx.lineTo(xR, y); ctx.stroke();
       }
 
-      // Eave line + ridge
+      // Eave shadow + outline
       ctx.strokeStyle = '#7a5028'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(2, 44); ctx.lineTo(55, 3); ctx.lineTo(108, 44); ctx.stroke();
       ctx.fillStyle = '#7a5028'; ctx.fillRect(2, 44, 106, 2);
-      ctx.fillStyle = '#8c5c28'; ctx.fillRect(53, 3, 4, 41);
+      // Thin center ridge
+      ctx.fillStyle = '#8c5c28'; ctx.fillRect(54, 3, 2, 41);
 
       // Chimney
       ctx.fillStyle = '#6a7a90'; ctx.fillRect(66, 10, 14, 24);
