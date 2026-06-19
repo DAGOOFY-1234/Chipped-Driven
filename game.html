@@ -479,6 +479,14 @@
 
       state.player.x = clamp(state.player.x, 18, WORLD_WIDTH - 18);
       state.player.y = clamp(state.player.y, 18, WORLD_HEIGHT - 18);
+
+      // House wall collision — keep player inside the interior floor bounds
+      const hX = state.haven.x, hY = state.haven.y;
+      if (state.player.x >= hX - 160 && state.player.x <= hX + 160 &&
+          state.player.y >= hY - 100 && state.player.y <= hY + 100) {
+        state.player.x = clamp(state.player.x, hX - 144, hX + 144);
+        state.player.y = clamp(state.player.y, hY - 82, hY + 90);
+      }
     }
 
     function updateCamera() {
