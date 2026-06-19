@@ -115,15 +115,15 @@
 
     .haven {
       position: absolute;
-      width: 110px;
-      height: 100px;
+      width: 320px;
+      height: 200px;
       border: none;
       border-radius: 0;
       background: transparent;
       color: transparent;
       pointer-events: none;
       transform: translate(-50%, -50%);
-      z-index: 2;
+      z-index: 1;
       image-rendering: pixelated;
     }
 
@@ -297,7 +297,7 @@
     const state = {
       player: { x: 170, y: 700, speed: 4.1 },
       camera: { x: 0, y: 0 },
-      haven: { x: 170, y: 700, radius: 76 },
+      haven: { x: 170, y: 700, radius: 160 },
       nodes: [],
       nextNodeId: 1,
       resources: {
@@ -571,108 +571,124 @@
       drawWorld();
     });
 
-    function buildHouseSprite() {
-      const W = 110, H = 100;
+    function buildInteriorSprite() {
+      const W = 320, H = 200;
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
       const ctx = c.getContext('2d');
 
-      // Foundation (stone)
-      ctx.fillStyle = '#8e99b0';
-      ctx.fillRect(10, 62, 90, 38);
-      const stoneColors = ['#7e8998', '#9aaabb', '#8898b0'];
-      for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 8; col++) {
-          const offset = row % 2 === 0 ? 0 : 6;
-          ctx.fillStyle = stoneColors[(row + col) % stoneColors.length];
-          ctx.fillRect(10 + col * 12 + offset, 64 + row * 9, 10, 7);
+      // Outer walls
+      ctx.fillStyle = '#1c1008';
+      ctx.fillRect(0, 0, W, H);
+
+      function drawFloor(x, y, w, h) {
+        ctx.fillStyle = '#9b6830';
+        ctx.fillRect(x, y, w, h);
+        for (let col = 0; col * 16 < w; col++) {
+          for (let row = 0; row * 16 < h; row++) {
+            if ((col + row) % 2 === 0) { ctx.fillStyle = '#8a5c28'; ctx.fillRect(x + col * 16, y + row * 16, 15, 15); }
+          }
+        }
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        for (let fx = x; fx < x + w; fx += 16) ctx.fillRect(fx, y, 1, h);
+        for (let fy = y; fy < y + h; fy += 16) ctx.fillRect(x, fy, w, 1);
+      }
+
+      drawFloor(4, 16, 136, 180);
+      drawFloor(180, 16, 136, 180);
+
+      // Walls
+      ctx.fillStyle = '#2a1808';
+      ctx.fillRect(0, 0, W, 16);
+      ctx.fillRect(0, 196, W, 4);
+      ctx.fillRect(0, 0, 4, H);
+      ctx.fillRect(316, 0, 4, H);
+      ctx.fillRect(140, 16, 40, H - 20);
+
+      // Door opening
+      drawFloor(140, 88, 40, 56);
+      ctx.fillStyle = '#5a3010';
+      ctx.fillRect(138, 86, 4, 60); ctx.fillRect(178, 86, 4, 60); ctx.fillRect(138, 84, 44, 4);
+
+      // === LEFT ROOM ===
+      ctx.fillStyle = '#5a3010'; ctx.fillRect(4, 16, 136, 14);
+      ['#cc9030','#30aa60','#cc4030','#8080c0','#d0a060','#c04060','#50a0a0','#aa5020'].forEach((col, i) => {
+        ctx.fillStyle = col; ctx.fillRect(6 + i * 16, 17, 12, 12);
+      });
+
+      // Bed
+      ctx.fillStyle = '#3a1c08'; ctx.fillRect(8, 30, 74, 6);
+      ctx.fillStyle = '#3a1c08'; ctx.fillRect(8, 32, 74, 100);
+      ctx.fillStyle = '#c0aa80'; ctx.fillRect(10, 34, 70, 96);
+      for (let bx = 0; bx < 4; bx++) {
+        for (let by = 0; by < 5; by++) {
+          ctx.fillStyle = (bx + by) % 2 === 0 ? '#7080b8' : '#505888';
+          ctx.fillRect(12 + bx * 17, 46 + by * 17, 15, 15);
         }
       }
+      ctx.fillStyle = '#e8dfc8'; ctx.fillRect(12, 34, 66, 14);
 
-      // Walls (log siding)
-      for (let row = 0; row < 5; row++) {
-        ctx.fillStyle = row % 2 === 0 ? '#c8924e' : '#b88040';
-        ctx.fillRect(12, 36 + row * 6, 86, 5);
-        ctx.fillStyle = 'rgba(0,0,0,0.12)';
-        ctx.fillRect(12, 40 + row * 6, 86, 1);
+      // Nightstand
+      ctx.fillStyle = '#5a3010'; ctx.fillRect(88, 72, 30, 26);
+      ctx.fillStyle = '#7a4820'; ctx.fillRect(90, 74, 26, 10);
+      ctx.fillStyle = '#ffe080'; ctx.fillRect(101, 67, 6, 8);
+      ctx.fillStyle = '#fff8c0'; ctx.fillRect(102, 65, 4, 4);
+
+      // Chest
+      ctx.fillStyle = '#4a2808'; ctx.fillRect(8, 152, 56, 42);
+      ctx.fillStyle = '#7a4820'; ctx.fillRect(10, 154, 52, 18);
+      ctx.fillStyle = '#cc9030'; ctx.fillRect(32, 165, 8, 7);
+      ctx.fillStyle = '#2a1808';
+      ctx.fillRect(8, 170, 56, 3); ctx.fillRect(8, 177, 56, 2);
+
+      // === RIGHT ROOM ===
+      ctx.fillStyle = '#5a3010'; ctx.fillRect(180, 16, 136, 14);
+      ['#cc4030','#8080c0','#30aa60','#cc9030','#c04060','#50a0a0','#d0a060','#aa5020'].forEach((col, i) => {
+        ctx.fillStyle = col; ctx.fillRect(182 + i * 16, 17, 12, 12);
+      });
+
+      // Fireplace
+      ctx.fillStyle = '#7a8a9a'; ctx.fillRect(266, 28, 46, 60);
+      ctx.fillStyle = '#585858'; ctx.fillRect(272, 34, 34, 48);
+      ctx.fillStyle = '#ff5010'; ctx.fillRect(278, 52, 22, 28);
+      ctx.fillStyle = '#ffaa20'; ctx.fillRect(282, 58, 14, 18);
+      ctx.fillStyle = '#ffff80'; ctx.fillRect(286, 64, 6, 8);
+      ctx.fillStyle = '#3a3a3a'; ctx.fillRect(278, 78, 22, 4);
+      ctx.fillStyle = '#888898'; ctx.fillRect(282, 16, 14, 14);
+      ctx.fillStyle = '#5a3010'; ctx.fillRect(264, 26, 50, 6);
+
+      // Dining table
+      const tX = 186, tY = 62, tW = 72, tH = 70;
+      ctx.fillStyle = '#6a4010';
+      ctx.fillRect(tX + 4, tY + tH, 8, 8); ctx.fillRect(tX + tW - 12, tY + tH, 8, 8);
+      ctx.fillStyle = '#c8a858'; ctx.fillRect(tX, tY, tW, tH);
+      ctx.strokeStyle = '#8a7030'; ctx.lineWidth = 2; ctx.strokeRect(tX, tY, tW, tH);
+      ctx.fillStyle = '#f0ecd8'; ctx.fillRect(tX + 6, tY + 6, tW - 12, tH - 12);
+      ctx.strokeStyle = '#c8c4a8'; ctx.lineWidth = 1; ctx.strokeRect(tX + 8, tY + 8, tW - 16, tH - 16);
+
+      // Candle
+      ctx.fillStyle = '#c03030'; ctx.fillRect(tX + tW/2 - 3, tY + tH/2 - 10, 6, 14);
+      ctx.fillStyle = '#ffe060'; ctx.fillRect(tX + tW/2 - 2, tY + tH/2 - 14, 4, 6);
+      ctx.fillStyle = '#ff9020'; ctx.fillRect(tX + tW/2 - 1, tY + tH/2 - 12, 2, 4);
+      ctx.fillStyle = '#e0d8c0'; ctx.fillRect(tX + tW/2 - 5, tY + tH/2 + 3, 10, 3);
+
+      // Chairs
+      ctx.fillStyle = '#7a5030';
+      for (let i = 0; i < 2; i++) { ctx.fillRect(tX + 8 + i * 36, tY - 14, 18, 14); ctx.fillRect(tX + 8 + i * 36, tY + tH, 18, 14); }
+      ctx.fillRect(tX - 16, tY + 10, 16, 18); ctx.fillRect(tX - 16, tY + 44, 16, 18);
+      ctx.fillRect(tX + tW, tY + 10, 16, 18); ctx.fillRect(tX + tW, tY + 44, 16, 18);
+      ctx.fillStyle = '#9a7050';
+      for (let i = 0; i < 2; i++) {
+        ctx.fillRect(tX + 10 + i * 36, tY - 12, 14, 3);
+        ctx.fillRect(tX + 10 + i * 36, tY + tH + 2, 14, 3);
       }
 
-      // Roof left slope (full triangle)
-      ctx.fillStyle = '#d9a060';
-      ctx.beginPath();
-      ctx.moveTo(55, 3);   // peak
-      ctx.lineTo(2, 44);   // bottom-left overhang
-      ctx.lineTo(55, 44);  // bottom-center
-      ctx.closePath();
-      ctx.fill();
-
-      // Roof right slope (full triangle, darker)
-      ctx.fillStyle = '#b87c40';
-      ctx.beginPath();
-      ctx.moveTo(55, 3);    // peak
-      ctx.lineTo(108, 44);  // bottom-right overhang
-      ctx.lineTo(55, 44);   // bottom-center
-      ctx.closePath();
-      ctx.fill();
-
-      // Horizontal plank lines (parallel to eave)
-      ctx.strokeStyle = 'rgba(80,40,10,0.22)';
-      ctx.lineWidth = 1;
-      for (let i = 1; i <= 9; i++) {
-        const t = i / 10;
-        const y = 3 + (44 - 3) * t;
-        const xL = 2 + (55 - 2) * t;
-        const xR = 108 - (108 - 55) * t;
-        ctx.beginPath(); ctx.moveTo(xL, y); ctx.lineTo(55, y); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(55, y); ctx.lineTo(xR, y); ctx.stroke();
-      }
-
-      // Eave shadow + outline
-      ctx.strokeStyle = '#7a5028'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(2, 44); ctx.lineTo(55, 3); ctx.lineTo(108, 44); ctx.stroke();
-      ctx.fillStyle = '#7a5028'; ctx.fillRect(2, 44, 106, 2);
-      // Thin center ridge
-      ctx.fillStyle = '#8c5c28'; ctx.fillRect(54, 3, 2, 41);
-
-      // Chimney
-      ctx.fillStyle = '#6a7a90'; ctx.fillRect(66, 10, 14, 24);
-      ctx.fillStyle = '#586878'; ctx.fillRect(64, 10, 18, 4);
-      ctx.fillStyle = 'rgba(0,0,0,0.1)';
-      for (let row = 0; row < 3; row++) ctx.fillRect(66, 14 + row * 6, 14, 1);
-
-      // Door
-      const dX = 42, dY = 68, dW = 26, dH = 30;
-      ctx.fillStyle = '#7a5028';
-      ctx.fillRect(dX - 2, dY, dW + 4, dH + 2);
-      ctx.beginPath(); ctx.arc(dX + dW / 2, dY, dW / 2 + 2, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = '#c02020';
-      ctx.fillRect(dX, dY, dW, dH);
-      ctx.beginPath(); ctx.arc(dX + dW / 2, dY, dW / 2, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = 'rgba(255,80,80,0.35)';
-      ctx.fillRect(dX + 3, dY + 4, 9, 10); ctx.fillRect(dX + 14, dY + 4, 9, 10);
-      ctx.fillStyle = '#e8c840'; ctx.fillRect(dX + dW - 6, dY + dH / 2, 3, 3);
-
-      // Left window
-      const drawWindow = (wx, wy) => {
-        ctx.fillStyle = '#7a5028'; ctx.fillRect(wx, wy, 22, 20);
-        ctx.fillStyle = '#2a3860'; ctx.fillRect(wx + 2, wy + 2, 18, 16);
-        ctx.fillStyle = '#6080b8';
-        ctx.fillRect(wx + 2, wy + 2, 7, 6); ctx.fillRect(wx + 11, wy + 2, 7, 6);
-        ctx.fillRect(wx + 2, wy + 10, 7, 6); ctx.fillRect(wx + 11, wy + 10, 7, 6);
-        ctx.fillStyle = '#7a5028';
-        ctx.fillRect(wx + 9, wy + 2, 2, 16); ctx.fillRect(wx + 2, wy + 8, 18, 2);
-      };
-      drawWindow(13, 66);
-      drawWindow(75, 66);
-
-      // Upper window
-      ctx.fillStyle = '#7a5028'; ctx.fillRect(46, 40, 18, 14);
-      ctx.fillStyle = '#2a3860'; ctx.fillRect(48, 42, 14, 10);
-      ctx.fillStyle = '#6080b8';
-      ctx.fillRect(48, 42, 5, 4); ctx.fillRect(55, 42, 5, 4);
-      ctx.fillRect(48, 48, 5, 4); ctx.fillRect(55, 48, 5, 4);
-      ctx.fillStyle = '#7a5028';
-      ctx.fillRect(53, 42, 2, 10); ctx.fillRect(48, 46, 14, 2);
+      // Cabinet
+      ctx.fillStyle = '#5a3010'; ctx.fillRect(182, 154, 52, 40);
+      ctx.fillStyle = '#7a4820';
+      ctx.fillRect(184, 156, 48, 16); ctx.fillRect(184, 174, 48, 16);
+      ctx.fillStyle = '#cc9030';
+      ctx.fillRect(205, 161, 6, 6); ctx.fillRect(205, 179, 6, 6);
 
       return c.toDataURL('image/png');
     }
@@ -728,9 +744,9 @@
     const grassTile = buildGrassTexture();
     el.world.style.backgroundImage = 'url(' + grassTile + ')';
     el.world.style.backgroundSize = '256px 256px';
-    const houseSprite = buildHouseSprite();
-    el.haven.style.backgroundImage = 'url(' + houseSprite + ')';
-    el.haven.style.backgroundSize = '110px 100px';
+    const interiorSprite = buildInteriorSprite();
+    el.haven.style.backgroundImage = 'url(' + interiorSprite + ')';
+    el.haven.style.backgroundSize = '320px 200px';
     el.haven.style.backgroundRepeat = 'no-repeat';
     el.haven.textContent = '';
     updateCamera();
