@@ -115,19 +115,16 @@
 
     .haven {
       position: absolute;
-      width: 90px;
-      height: 70px;
-      border: 2px solid #3a2510;
-      border-radius: 10px;
-      background: linear-gradient(180deg, #cf9a55 0%, #9f5e2f 100%);
-      color: #1e1208;
-      display: grid;
-      place-items: center;
-      font-weight: 700;
-      text-align: center;
-      font-size: 0.75rem;
+      width: 110px;
+      height: 100px;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: transparent;
       pointer-events: none;
       transform: translate(-50%, -50%);
+      z-index: 2;
+      image-rendering: pixelated;
     }
 
     .node {
@@ -574,6 +571,110 @@
       drawWorld();
     });
 
+    function buildHouseSprite() {
+      const W = 110, H = 100;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const ctx = c.getContext('2d');
+
+      // Foundation (stone)
+      ctx.fillStyle = '#8e99b0';
+      ctx.fillRect(10, 62, 90, 38);
+      const stoneColors = ['#7e8998', '#9aaabb', '#8898b0'];
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 8; col++) {
+          const offset = row % 2 === 0 ? 0 : 6;
+          ctx.fillStyle = stoneColors[(row + col) % stoneColors.length];
+          ctx.fillRect(10 + col * 12 + offset, 64 + row * 9, 10, 7);
+        }
+      }
+
+      // Walls (log siding)
+      for (let row = 0; row < 5; row++) {
+        ctx.fillStyle = row % 2 === 0 ? '#c8924e' : '#b88040';
+        ctx.fillRect(12, 36 + row * 6, 86, 5);
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(12, 40 + row * 6, 86, 1);
+      }
+
+      // Roof left slope
+      ctx.fillStyle = '#d9a060';
+      ctx.beginPath();
+      ctx.moveTo(55, 3);
+      ctx.lineTo(2, 44);
+      ctx.lineTo(12, 44);
+      ctx.lineTo(55, 9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Roof right slope (darker)
+      ctx.fillStyle = '#b87c40';
+      ctx.beginPath();
+      ctx.moveTo(55, 3);
+      ctx.lineTo(108, 44);
+      ctx.lineTo(98, 44);
+      ctx.lineTo(55, 9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Roof plank lines
+      ctx.strokeStyle = 'rgba(80,40,10,0.2)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i <= 7; i++) {
+        const t = i / 8;
+        ctx.beginPath(); ctx.moveTo(2 + 53 * t, 44 - 41 * t); ctx.lineTo(12 + 43 * t, 44 - 35 * t); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(108 - 53 * t, 44 - 41 * t); ctx.lineTo(98 - 43 * t, 44 - 35 * t); ctx.stroke();
+      }
+
+      // Eave line + ridge
+      ctx.strokeStyle = '#7a5028'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(2, 44); ctx.lineTo(55, 3); ctx.lineTo(108, 44); ctx.stroke();
+      ctx.fillStyle = '#7a5028'; ctx.fillRect(2, 44, 106, 2);
+      ctx.fillStyle = '#8c5c28'; ctx.fillRect(53, 3, 4, 41);
+
+      // Chimney
+      ctx.fillStyle = '#6a7a90'; ctx.fillRect(66, 10, 14, 24);
+      ctx.fillStyle = '#586878'; ctx.fillRect(64, 10, 18, 4);
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      for (let row = 0; row < 3; row++) ctx.fillRect(66, 14 + row * 6, 14, 1);
+
+      // Door
+      const dX = 42, dY = 68, dW = 26, dH = 30;
+      ctx.fillStyle = '#7a5028';
+      ctx.fillRect(dX - 2, dY, dW + 4, dH + 2);
+      ctx.beginPath(); ctx.arc(dX + dW / 2, dY, dW / 2 + 2, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#c02020';
+      ctx.fillRect(dX, dY, dW, dH);
+      ctx.beginPath(); ctx.arc(dX + dW / 2, dY, dW / 2, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(255,80,80,0.35)';
+      ctx.fillRect(dX + 3, dY + 4, 9, 10); ctx.fillRect(dX + 14, dY + 4, 9, 10);
+      ctx.fillStyle = '#e8c840'; ctx.fillRect(dX + dW - 6, dY + dH / 2, 3, 3);
+
+      // Left window
+      const drawWindow = (wx, wy) => {
+        ctx.fillStyle = '#7a5028'; ctx.fillRect(wx, wy, 22, 20);
+        ctx.fillStyle = '#2a3860'; ctx.fillRect(wx + 2, wy + 2, 18, 16);
+        ctx.fillStyle = '#6080b8';
+        ctx.fillRect(wx + 2, wy + 2, 7, 6); ctx.fillRect(wx + 11, wy + 2, 7, 6);
+        ctx.fillRect(wx + 2, wy + 10, 7, 6); ctx.fillRect(wx + 11, wy + 10, 7, 6);
+        ctx.fillStyle = '#7a5028';
+        ctx.fillRect(wx + 9, wy + 2, 2, 16); ctx.fillRect(wx + 2, wy + 8, 18, 2);
+      };
+      drawWindow(13, 66);
+      drawWindow(75, 66);
+
+      // Upper window
+      ctx.fillStyle = '#7a5028'; ctx.fillRect(46, 40, 18, 14);
+      ctx.fillStyle = '#2a3860'; ctx.fillRect(48, 42, 14, 10);
+      ctx.fillStyle = '#6080b8';
+      ctx.fillRect(48, 42, 5, 4); ctx.fillRect(55, 42, 5, 4);
+      ctx.fillRect(48, 48, 5, 4); ctx.fillRect(55, 48, 5, 4);
+      ctx.fillStyle = '#7a5028';
+      ctx.fillRect(53, 42, 2, 10); ctx.fillRect(48, 46, 14, 2);
+
+      return c.toDataURL('image/png');
+    }
+
     function drawGrassTuft(ctx, bx, by) {
       const colors = ['#1a5c1a', '#1f6b20', '#145018', '#1c6820', '#0f4a15'];
       const angles = [-40, -25, -12, 0, 12, 26, 40];
@@ -625,6 +726,11 @@
     const grassTile = buildGrassTexture();
     el.world.style.backgroundImage = 'url(' + grassTile + ')';
     el.world.style.backgroundSize = '256px 256px';
+    const houseSprite = buildHouseSprite();
+    el.haven.style.backgroundImage = 'url(' + houseSprite + ')';
+    el.haven.style.backgroundSize = '110px 100px';
+    el.haven.style.backgroundRepeat = 'no-repeat';
+    el.haven.textContent = '';
     updateCamera();
     drawWorld();
     drawHud();
