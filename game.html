@@ -172,18 +172,6 @@
       z-index: 20;
     }
 
-    #interior {
-      display: none;
-      position: fixed;
-      left: 0; top: 0;
-      width: 100vw; height: 100vh;
-      z-index: 10;
-      background-color: #1c1008;
-      background-size: 100% 100%;
-      background-repeat: no-repeat;
-      image-rendering: pixelated;
-    }
-
     .grid {
       display: none;
     }
@@ -230,10 +218,6 @@
       </section>
     </section>
   </main>
-
-  <div id="interior" aria-hidden="true">
-    <div id="interior-player" class="player" aria-hidden="true"></div>
-  </div>
 
   <script>
     const WORLD_WIDTH = 2400;
@@ -282,12 +266,9 @@
     ];
 
     const state = {
-      player: { x: 170, y: 700, speed: 4.1 },
+      player: { x: 220, y: 700, speed: 4.1 },
       camera: { x: 0, y: 0 },
-      haven: { x: 170, y: 700, radius: 160 },
-      inside: true,
-      interiorX: 240,
-      interiorY: 100,
+      haven: { x: 170, y: 700, radius: 76 },
       nodes: [],
       nextNodeId: 1,
       resources: {
@@ -324,9 +305,7 @@
       sulfur: document.getElementById("sulfur"),
       redwood: document.getElementById("redwood"),
       tusk: document.getElementById("tusk"),
-      fur: document.getElementById("fur"),
-      interior: document.getElementById("interior"),
-      interiorPlayer: document.getElementById("interior-player")
+      fur: document.getElementById("fur")
     };
 
     function distance(aX, aY, bX, bY) {
@@ -396,8 +375,6 @@
     }
 
     function nearbyInteraction() {
-      if (state.inside) return { kind: "haven" };
-
       const nearHaven = distance(state.player.x, state.player.y, state.haven.x, state.haven.y) <= state.haven.radius;
       if (nearHaven) {
         return { kind: "haven" };
@@ -478,36 +455,16 @@
 
     function updateMovement() {
       const speed = state.player.speed;
-      if (state.inside) {
-        if (keys.has("arrowup") || keys.has("w")) state.interiorY -= speed;
-        if (keys.has("arrowdown") || keys.has("s")) state.interiorY += speed;
-        if (keys.has("arrowleft") || keys.has("a")) state.interiorX -= speed;
-        if (keys.has("arrowright") || keys.has("d")) state.interiorX += speed;
-        state.interiorX = clamp(state.interiorX, 12, 308);
-        state.interiorY = clamp(state.interiorY, 20, 192);
-        if (state.interiorY >= 190) {
-          state.inside = false;
-          state.player.x = state.haven.x;
-          state.player.y = state.haven.y + 140;
-        }
-      } else {
-        if (keys.has("arrowup") || keys.has("w")) state.player.y -= speed;
-        if (keys.has("arrowdown") || keys.has("s")) state.player.y += speed;
-        if (keys.has("arrowleft") || keys.has("a")) state.player.x -= speed;
-        if (keys.has("arrowright") || keys.has("d")) state.player.x += speed;
-        state.player.x = clamp(state.player.x, 18, WORLD_WIDTH - 18);
-        state.player.y = clamp(state.player.y, 18, WORLD_HEIGHT - 18);
-        const distToHaven = distance(state.player.x, state.player.y, state.haven.x, state.haven.y);
-        if (distToHaven < 50) {
-          state.inside = true;
-          state.interiorX = 240;
-          state.interiorY = 100;
-        }
-      }
+      if (keys.has("arrowup") || keys.has("w")) state.player.y -= speed;
+      if (keys.has("arrowdown") || keys.has("s")) state.player.y += speed;
+      if (keys.has("arrowleft") || keys.has("a")) state.player.x -= speed;
+      if (keys.has("arrowright") || keys.has("d")) state.player.x += speed;
+
+      state.player.x = clamp(state.player.x, 18, WORLD_WIDTH - 18);
+      state.player.y = clamp(state.player.y, 18, WORLD_HEIGHT - 18);
     }
 
     function updateCamera() {
-      if (state.inside) return;
       const viewW = el.viewport.clientWidth;
       const viewH = el.viewport.clientHeight;
       state.camera.x = clamp(state.player.x - viewW / 2, 0, WORLD_WIDTH - viewW);
@@ -515,18 +472,11 @@
     }
 
     function drawWorld() {
-      if (state.inside) {
-        el.interior.style.display = 'block';
-        el.interiorPlayer.style.left = (state.interiorX / 320 * 100).toFixed(2) + 'vw';
-        el.interiorPlayer.style.top  = (state.interiorY / 200 * 100).toFixed(2) + 'vh';
-      } else {
-        el.interior.style.display = 'none';
-        el.haven.style.left = state.haven.x + "px";
-        el.haven.style.top  = state.haven.y + "px";
-        el.player.style.left = state.player.x + "px";
-        el.player.style.top  = state.player.y + "px";
-        el.world.style.transform = "translate(" + (-state.camera.x) + "px, " + (-state.camera.y) + "px)";
-      }
+      el.haven.style.left = state.haven.x + "px";
+      el.haven.style.top = state.haven.y + "px";
+      el.player.style.left = state.player.x + "px";
+      el.player.style.top = state.player.y + "px";
+      el.world.style.transform = "translate(" + (-state.camera.x) + "px, " + (-state.camera.y) + "px)";
     }
 
     function drawHud() {
@@ -770,7 +720,6 @@
     el.haven.style.backgroundSize = '320px 200px';
     el.haven.style.backgroundRepeat = 'no-repeat';
     el.haven.textContent = '';
-    el.interior.style.backgroundImage = 'url(' + interiorSprite + ')';
     updateCamera();
     drawWorld();
     drawHud();
