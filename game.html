@@ -159,7 +159,7 @@
     }
 
     .prompt {
-      position: absolute;
+      position: fixed;
       left: 12px;
       bottom: 12px;
       padding: 8px 10px;
@@ -168,7 +168,20 @@
       background: rgba(255, 253, 246, 0.82);
       font-weight: 700;
       font-size: 0.85rem;
-      max-width: calc(100% - 24px);
+      max-width: calc(100vw - 24px);
+      z-index: 20;
+    }
+
+    #interior {
+      display: none;
+      position: fixed;
+      left: 0; top: 0;
+      width: 100vw; height: 100vh;
+      z-index: 10;
+      background-color: #1c1008;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
     }
 
     .grid {
@@ -215,38 +228,12 @@
         </div>
         <div class="prompt" id="prompt">Find a nearby node and press E.</div>
       </section>
-
-      <section class="grid">
-        <section class="box">
-          <strong>Location</strong>
-          <p>Biome: <span id="biome">Jungle</span></p>
-          <p>Position: <span id="position">0, 0</span></p>
-          <p>Steam Power: <span id="power">0</span></p>
-        </section>
-
-        <section class="box">
-          <strong>Resources</strong>
-          <ul class="list">
-            <li>Flint: <span id="flint">0</span></li>
-            <li>Vines: <span id="vines">0</span></li>
-            <li>Sap: <span id="sap">0</span></li>
-            <li>Obsidian: <span id="obsidian">0</span></li>
-            <li>Sulfur: <span id="sulfur">0</span></li>
-            <li>Redwood: <span id="redwood">0</span></li>
-            <li>Mammoth Tusk: <span id="tusk">0</span></li>
-            <li>Scurry-Fur: <span id="fur">0</span></li>
-          </ul>
-        </section>
-
-        <section class="box" style="grid-column: 1 / -1;">
-          <strong>Current Project</strong>
-          <p id="project">Steam Valves: 3 Flint, 2 Vines, 2 Sap. Reward +2 power.</p>
-          <p>Craft by standing near the Steam Haven and pressing E.</p>
-          <p class="status" id="status">Explore the world and harvest your first materials.</p>
-        </section>
-      </section>
     </section>
   </main>
+
+  <div id="interior" aria-hidden="true">
+    <div id="interior-player" class="player" aria-hidden="true"></div>
+  </div>
 
   <script>
     const WORLD_WIDTH = 2400;
@@ -298,6 +285,9 @@
       player: { x: 170, y: 700, speed: 4.1 },
       camera: { x: 0, y: 0 },
       haven: { x: 170, y: 700, radius: 160 },
+      inside: true,
+      interiorX: 240,
+      interiorY: 100,
       nodes: [],
       nextNodeId: 1,
       resources: {
@@ -334,7 +324,9 @@
       sulfur: document.getElementById("sulfur"),
       redwood: document.getElementById("redwood"),
       tusk: document.getElementById("tusk"),
-      fur: document.getElementById("fur")
+      fur: document.getElementById("fur"),
+      interior: document.getElementById("interior"),
+      interiorPlayer: document.getElementById("interior-player")
     };
 
     function distance(aX, aY, bX, bY) {
@@ -404,6 +396,8 @@
     }
 
     function nearbyInteraction() {
+      if (state.inside) return { kind: "haven" };
+
       const nearHaven = distance(state.player.x, state.player.y, state.haven.x, state.haven.y) <= state.haven.radius;
       if (nearHaven) {
         return { kind: "haven" };
@@ -484,16 +478,36 @@
 
     function updateMovement() {
       const speed = state.player.speed;
-      if (keys.has("arrowup") || keys.has("w")) state.player.y -= speed;
-      if (keys.has("arrowdown") || keys.has("s")) state.player.y += speed;
-      if (keys.has("arrowleft") || keys.has("a")) state.player.x -= speed;
-      if (keys.has("arrowright") || keys.has("d")) state.player.x += speed;
-
-      state.player.x = clamp(state.player.x, 18, WORLD_WIDTH - 18);
-      state.player.y = clamp(state.player.y, 18, WORLD_HEIGHT - 18);
+      if (state.inside) {
+        if (keys.has("arrowup") || keys.has("w")) state.interiorY -= speed;
+        if (keys.has("arrowdown") || keys.has("s")) state.interiorY += speed;
+        if (keys.has("arrowleft") || keys.has("a")) state.interiorX -= speed;
+        if (keys.has("arrowright") || keys.has("d")) state.interiorX += speed;
+        state.interiorX = clamp(state.interiorX, 12, 308);
+        state.interiorY = clamp(state.interiorY, 20, 192);
+        if (state.interiorY >= 190) {
+          state.inside = false;
+          state.player.x = state.haven.x;
+          state.player.y = state.haven.y + 140;
+        }
+      } else {
+        if (keys.has("arrowup") || keys.has("w")) state.player.y -= speed;
+        if (keys.has("arrowdown") || keys.has("s")) state.player.y += speed;
+        if (keys.has("arrowleft") || keys.has("a")) state.player.x -= speed;
+        if (keys.has("arrowright") || keys.has("d")) state.player.x += speed;
+        state.player.x = clamp(state.player.x, 18, WORLD_WIDTH - 18);
+        state.player.y = clamp(state.player.y, 18, WORLD_HEIGHT - 18);
+        const distToHaven = distance(state.player.x, state.player.y, state.haven.x, state.haven.y);
+        if (distToHaven < 50) {
+          state.inside = true;
+          state.interiorX = 240;
+          state.interiorY = 100;
+        }
+      }
     }
 
     function updateCamera() {
+      if (state.inside) return;
       const viewW = el.viewport.clientWidth;
       const viewH = el.viewport.clientHeight;
       state.camera.x = clamp(state.player.x - viewW / 2, 0, WORLD_WIDTH - viewW);
@@ -501,11 +515,18 @@
     }
 
     function drawWorld() {
-      el.haven.style.left = state.haven.x + "px";
-      el.haven.style.top = state.haven.y + "px";
-      el.player.style.left = state.player.x + "px";
-      el.player.style.top = state.player.y + "px";
-      el.world.style.transform = "translate(" + (-state.camera.x) + "px, " + (-state.camera.y) + "px)";
+      if (state.inside) {
+        el.interior.style.display = 'block';
+        el.interiorPlayer.style.left = (state.interiorX / 320 * 100).toFixed(2) + 'vw';
+        el.interiorPlayer.style.top  = (state.interiorY / 200 * 100).toFixed(2) + 'vh';
+      } else {
+        el.interior.style.display = 'none';
+        el.haven.style.left = state.haven.x + "px";
+        el.haven.style.top  = state.haven.y + "px";
+        el.player.style.left = state.player.x + "px";
+        el.player.style.top  = state.player.y + "px";
+        el.world.style.transform = "translate(" + (-state.camera.x) + "px, " + (-state.camera.y) + "px)";
+      }
     }
 
     function drawHud() {
@@ -749,6 +770,7 @@
     el.haven.style.backgroundSize = '320px 200px';
     el.haven.style.backgroundRepeat = 'no-repeat';
     el.haven.textContent = '';
+    el.interior.style.backgroundImage = 'url(' + interiorSprite + ')';
     updateCamera();
     drawWorld();
     drawHud();
